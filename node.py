@@ -3,6 +3,7 @@ import argparse
 
 class Node:
 	HOST = '127.0.0.1'
+	is_coordinator = False
 
 	def __init__(self, id_, label, time, port):
 		self.id_ = id_

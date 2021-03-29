@@ -22,11 +22,12 @@ class Network:
 	current_port = randint(10000, 60000)
 	
 	def __init__(self, nodes):
+		self.nodes = nodes
 		for node in nodes:
 			# add each node to the network with Node class
 			# by default, change K to 0
 			node_label = node[1].split("_")[0]
-			create(node[0], node_label+"_0", node[2],self.current_port)
+			create(node[0], node_label+"_0", node[2], self.current_port)
 			time.sleep(1)
 			reply = send_message("here?", self.current_port)
 			if reply == "yes":
@@ -36,6 +37,16 @@ class Network:
 
 		time.sleep(1)
 
+	def get_command(self, command):
+		message = ""
+		if command.strip() == ('list'):
+			# Let's check our each node to know it is there or not
+			for node in self.nodes:
+				message += f"{node[0]}, {node[1]}\n" # This should be changed. We should collect node objects not tuples.
+		elif command.strip() == "clock":
+			for node in self.nodes:
+				message += f"{node[1]}, {node[2]}\n" # This should be changed. We should collect node objects not tuples.
+		print(message)
 
 
 if __name__ == '__main__':
@@ -60,3 +71,7 @@ if __name__ == '__main__':
 	# Select coordinator
 
 	# get commands and process
+	while True:
+		print('Enter your command: ', end='$ ')
+		cmd = input()
+		net.get_command(cmd)
