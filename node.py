@@ -12,9 +12,24 @@ class Node:
 		self.port = port
 
 
+	def return_node(self, id_):
+		if self.id_ == id_:
+			return self
+
 	def processMessages(self, message):
 		if message == "here?":
 			return "yes"
+		elif message == "list":
+			return list_nodes()
+		elif message == "is_coordinator":
+			if self.is_coordinator:
+				return "yes"
+			else:
+				return "no"
+		elif message == "kill":
+			exit()
+		elif message == "id":
+			return str(self.id_)
 
 	def join(self):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _socket:
@@ -29,7 +44,6 @@ class Node:
 					if message == 'bye':
 						print(f'Node {self.id_}: I am going out..')
 						break
-
 					response = self.processMessages(message)
 
 					con.send(response.encode('utf-8'))
@@ -45,4 +59,3 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	node = Node(args.id, args.label, args.time, args.port)
 	node.join()
-

@@ -20,34 +20,65 @@ def send_message(message, port):
 
 class Network:
 	current_port = randint(10000, 60000)
-	
+	node_list = []
 	def __init__(self, nodes):
-		self.nodes = nodes
 		for node in nodes:
 			# add each node to the network with Node class
 			# by default, change K to 0
 			node_label = node[1].split("_")[0]
-			create(node[0], node_label+"_0", node[2], self.current_port)
+			# Create Node obj to store in the node_list
+			node_obj = Node(node[0], node_label+"_0", node[2], self.current_port)
+			create(node_obj.id_, node_obj.label, node_obj.time, node_obj.port)
 			time.sleep(1)
-			reply = send_message("here?", self.current_port)
+			reply = send_message("here?", node_obj.port)
 			if reply == "yes":
-				print(f"Node {node[0]} has been created on PORT {self.current_port}")
+				# self.node_list.append((node[0], node_label+"_0", node[2], self.current_port))
+				self.node_list.append(node_obj)
+				print(f"Node {node_obj.label} has been created on PORT {self.current_port}")
 			
 			self.current_port += 1
-
 		time.sleep(1)
+
+
 
 	def get_command(self, command):
 		message = ""
 		if command.strip() == ('list'):
 			# Let's check our each node to know it is there or not
-			for node in self.nodes:
-				message += f"{node[0]}, {node[1]}\n" # This should be changed. We should collect node objects not tuples.
+			for node in self.node_list:
+				# if send_message("here?", node.port) == "yes":
+				is_coordinator = send_message("is_coordinator", node.port)
+				if is_coordinator == "yes":
+					message += f"{node.id_}, {node.label} (Coordinator)\n"
+				else:
+					message += f"{node.id_}, {node.label}\n" # This should be changed. We should collect node objects not tuples.
 		elif command.strip() == "clock":
-			for node in self.nodes:
-				message += f"{node[1]}, {node[2]}\n" # This should be changed. We should collect node objects not tuples.
+			for node in self.node_list:
+				message += f"{node.label}, {node.time}\n" # This should be changed. We should collect node objects not tuples.
+
+		elif command.startswith('kill'): # Has problem
+			id_ = command.split(' ')[1]
+			for node in self.node_list:
+				if node.id_ == id_:
+					send_message("kill", node.port)
+					print(f"Process {node.id_} is going to leave")
+					if node.is_coordinator:
+						pass # New election
+					
+					self.node_list.remove(node)
+					break
+
 		print(message)
 
+
+	def default_election(self):
+		pass # First time election
+
+	def apply_bully(self):
+		pass
+
+	def sync_clocks(self):
+		pass
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
