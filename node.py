@@ -9,18 +9,52 @@ class Node:
 		self.id_ = id_
 		self.label = label
 		self.time = time
+		self.default_time = time
 		self.port = port
+		self.K = 0
 
+	def make_coordinator(self):
+		self.is_coordinator = True
 
-	def return_node(self, id_):
-		if self.id_ == id_:
-			return self
+	def update_label(self):
+		head, _ = self.label.split("_")
+		self.label = head + "_" + str(self.K)
+
+	def resetTime(self):
+		self.time = self.default_time
+
+	def updateTime(self, time):
+		self.time = time
+
+	def __eq__(self, other):
+		if(isinstance(other, Node)):
+			return self.id_ == other.id_
+
+	def __gt__(self, other):
+		if(isinstance(other, Node)):
+			return self.id_ > other.id_
+
+	def __lt__(self, other):
+		return self.id_ < other.id_
+
+	def __str__(self):
+		if(self.is_coordinator):
+			return f"{self.id_}, {self.label}, {self.time} (Coordinator)"
+		return f"{self.id_}, {self.label}, {self.time}"
+
+	def identify(self):
+		if(self.is_coordinator):
+			return f"{self.id_}, {self.label} (Coordinator)"
+		return f"{self.id_}, {self.label}"
+
+	def clockTime(self):
+		return f"{self.label}, {self.time}"
 
 	def processMessages(self, message):
 		if message == "here?":
 			return "yes"
 		elif message == "list":
-			return list_nodes()
+			return "yes"
 		elif message == "is_coordinator":
 			if self.is_coordinator:
 				return "yes"
@@ -59,3 +93,5 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	node = Node(args.id, args.label, args.time, args.port)
 	node.join()
+
+	
