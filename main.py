@@ -1,7 +1,7 @@
 import sys
 from random import randint
 from random import choice
-from create_process import create
+from create_process import create, create_clock
 from node import Node
 import socket
 import time
@@ -22,6 +22,8 @@ def send_message(message, port):
 class Network:
 	current_port = randint(10000, 60000)
 	node_list = []
+	suspended_list = []
+	coordinator = None
 	def __init__(self, nodes):
 		biggest_node = None
 		for node in nodes:
@@ -44,6 +46,7 @@ class Network:
 			self.current_port += 1
 		self.default_election(biggest_node)
 		self.sync_clocks(biggest_node, self.node_list)
+		create_clock(self.coordinator.port, self.coordinator.time)
 		time.sleep(1)
 
 
@@ -53,16 +56,9 @@ class Network:
 		if command.strip() == ('list'):
 			# Let's check our each node to know it is there or not
 			for node in self.node_list:
-				# if send_message("here?", node.port) == "yes":
-				is_coordinator = send_message("is_coordinator", node.port)
-				#if is_coordinator == "yes":
-					#message += f"{node.id_}, {node.label} (Coordinator)\n"
-				#else:
-					#message += f"{node.id_}, {node.label}\n" # This should be changed. We should collect node objects not tuples.
 				message += node.identify() + '\n'
 		elif command.strip() == "clock":
 			for node in self.node_list:
-				#message += f"{node.label}, {node.time}\n" # This should be changed. We should collect node objects not tuples.
 				message += node.clockTime() + '\n'
 
 		elif command.startswith('kill'): # Has problem
@@ -79,12 +75,50 @@ class Network:
 			id_ = command.split(' ')[1]
 			time = command.split(' ')[2]
 			self.setTime(id_, time)
+			self.sync_clocks(self.coordinator, self.node_list)
+			print("Clocks synced")
+
+		elif command.startswith('freeze'):
+			id_ = int(command.split(' ')[1])
+			print(f"Freezing id {id_}")
+			for i in self.node_list:
+				if int(i.id_)==id_:
+					reply = send_message("freeze", i.port)
+					if  reply == "freezed":
+						print(f"Freezing Node with ID {i.id_} on PORT:{i.port}")
+						self.suspended_list.append(i)
+						self.node_list.remove(i)
+					if i.is_coordinator:
+						self.startElection()
+						self.sync_clocks(self.coordinator, self.node_list)
+					break
+
+		elif command.startswith('unfreeze'):
+			id_ = int(command.split(' ')[1])
+			for i in self.suspended_list:
+				if int(i.id_)==id_:
+					reply = send_message("unfreeze", i.port)
+					if  reply == "unfreezed":
+						print(f"Unfreezing Node with ID {i.id_} on PORT:{i.port}")
+						self.suspended_list.remove(i)
+						self.node_list.append(i)
+					self.startElection()
+					self.sync_clocks(self.coordinator, self.node_list)
+					break
 
 		print(message)
+
+	def reload(self, filename):
+		file_content = open(filename, "r")
+		nodes_id = []
+		nodes = []
+		# Should be filled up
+
 
 	#is this java?
 	def default_election(self, node):
 		node.make_coordinator()
+		self.coordinator = node
 
 	def startElection(self):
 		for node in self.node_list:
@@ -120,7 +154,6 @@ class Network:
 				#if the process was not the coordinator, sync must happen automatically
 				break
 
-
 	def sync_clocks(self, coordinator, nodes, newProcess = False):
 		s = coordinator.time
 		for node in nodes:
@@ -148,11 +181,12 @@ if __name__ == '__main__':
 	# Create the network
 	net = Network(nodes)
 	print("Network has been created")
-
 	# Select coordinator
-
 	# get commands and process
 	while True:
 		print('Enter your command: ', end='$ ')
 		cmd = input()
-		net.get_command(cmd)
+		if cmd == "reload":
+			net.reload(filename)
+		else:
+			net.get_command(cmd)

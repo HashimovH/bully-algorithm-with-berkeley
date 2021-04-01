@@ -1,9 +1,12 @@
 import socket
 import argparse
+import time
+import multiprocessing
 
 class Node:
 	HOST = '127.0.0.1'
 	is_coordinator = False
+	suspended = False
 
 	def __init__(self, id_, label, time, port):
 		self.id_ = id_
@@ -43,16 +46,26 @@ class Node:
 		return f"{self.id_}, {self.label}, {self.time}"
 
 	def identify(self):
-		if(self.is_coordinator):
-			return f"{self.id_}, {self.label} (Coordinator)"
-		return f"{self.id_}, {self.label}"
+		if self.suspended == False:
+			if(self.is_coordinator):
+				return f"{self.id_}, {self.label} (Coordinator)"
+			return f"{self.id_}, {self.label}"
+		else:
+			return ""
 
 	def clockTime(self):
 		return f"{self.label}, {self.time}"
 
+	def get_port(self, id_):
+		if self.id_==id_:
+			return self.port
+
 	def processMessages(self, message):
 		if message == "here?":
-			return "yes"
+			if self.suspended == False:
+				return "yes"
+			else:
+				return "no"
 		elif message == "list":
 			return "yes"
 		elif message == "is_coordinator":
@@ -64,6 +77,16 @@ class Node:
 			exit()
 		elif message == "id":
 			return str(self.id_)
+		elif message.strip() == "freeze":
+			self.suspended = True
+			return "freezed"
+		elif message == "unfreeze":
+			self.suspended = False
+			return "unfreezed"
+		elif message.startswith('Clock'):
+			new_time = message.split('-')[1]
+			self.updateTime(new_time)
+			return "updated"
 
 	def join(self):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _socket:
