@@ -37,6 +37,10 @@ class Node:
 	def updateTime(self):
 		self.time = add_minutes(self.time, 1)
 
+	def setTime(self, time_):
+		helper = [int(i) for i in time_.split(":")]
+		self.time = datetime.time(helper[0], helper[1])
+
 	def __eq__(self, other):
 		if(isinstance(other, Node)):
 			return self.id_ == other.id_
