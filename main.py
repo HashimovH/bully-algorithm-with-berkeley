@@ -28,19 +28,7 @@ class Network:
 	coordinator = None
 	def __init__(self, nodes):
 		for node in nodes:
-			# add each node to the network with Node class
-			# by default, change K to 0
-			node_label = node[1].split("_")[0]
-			# Create Node obj to store in the node_list
-			node_obj = Node(node[0], node_label+"_0", node[2][:-2], self.current_port)
-			create(node_obj.id_, node_obj.label, node_obj.time, node_obj.port)
-			#is this needed?
-			#time.sleep(1)
-			reply = send_message("here?", node_obj.port)
-			if reply == "yes":
-				# self.node_list.append((node[0], node_label+"_0", node[2], self.current_port))
-				self.node_list.append(node_obj)
-				print(f"Node {node_obj.label} has been created on PORT {self.current_port}")
+			self.handleCreation(node[0], node[1], node[2][:-2])
 			
 			self.current_port += 1
 		self.coordinator = self.startElection(default = True)
@@ -49,6 +37,19 @@ class Network:
 		time.sleep(1)
 
 
+	def handleCreation(self, id_, label, time_):
+		# add each node to the network with Node class
+		# by default, change K to 0
+		node_label = label.split("_")[0]
+		# Create Node obj to store in the node_list
+		node_obj = Node(id_, node_label+"_0", time_, self.current_port)
+		create(node_obj.id_, node_obj.label, node_obj.time, node_obj.port)
+		
+		reply = send_message("here?", node_obj.port)
+		if reply == "yes":
+			# self.node_list.append((node[0], node_label+"_0", node[2], self.current_port))
+			self.node_list.append(node_obj)
+			print(f"Node {node_obj.label} has been created on PORT {self.current_port}")
 
 	def get_command(self, command):
 		message = ""
@@ -62,7 +63,11 @@ class Network:
 				message += send_message("clock", node.port) + '\n'
 
 		elif command.startswith('kill'): #Solved?
-			id_ = command.split(' ')[1]
+			try:
+				id_ = command.split(' ')[1]
+			except:
+				print("Please specify the process id")
+				return
 			for node in self.node_list:
 				if node.id_ == id_:
 					send_message("kill", node.port)
@@ -73,7 +78,12 @@ class Network:
 					break
 
 		elif command.startswith('freeze'):
-			id_ = int(command.split(' ')[1])
+			id_=0
+			try:
+				id_ = int(command.split(' ')[1])
+			except:
+				print("Please specify the process id")
+				return
 			print(f"Freezing id {id_}")
 			for i in self.node_list:
 				if int(i.id_)==id_:
@@ -88,7 +98,12 @@ class Network:
 					break
 
 		elif command.startswith('unfreeze'):
-			id_ = int(command.split(' ')[1])
+			id_=0
+			try:
+				id_ = int(command.split(' ')[1])
+			except:
+				print("Please specify the process id")
+				return
 			for i in self.suspended_list:
 				if int(i.id_)==id_:
 					reply = send_message("unfreeze", i.port)
@@ -99,9 +114,26 @@ class Network:
 					self.startElection()
 					self.sync_clocks()
 					break
+		
+		# elif command.startswith('set-time'):
+		# 	try:
+		# 		id_ = command.split(' ')[1]
+		# 		time = command.split(' ')[2]
+		# 	except:
+		# 		print("Please enter set-time command in a right way. (set-time <id> <time>)")
+		# 		return
+
+		# 	self.setTime(id_, time)
+		# 	self.sync_clocks(self.coordinator, self.node_list)
+		# 	print("Time has been updated and synced")
 
 		elif command.startswith("reload"):
-			file = command.split(' ')[1]
+			file = None
+			try:
+				file = command.split(' ')[1]
+			except:
+				print("Please specify the input file name...")
+				return
 			self.reload(file)
 
 		elif command.startswith("set"):
@@ -113,8 +145,8 @@ class Network:
 			except IndexError as error:
 				print("Not enough arguments, the use case is: set n hh:mm(am/pm)")
 
-
-
+		elif command == 'exit':
+			os._exit(0)
 
 		print(message)
 	#drift
@@ -170,40 +202,37 @@ class Network:
 		s = send_message("time", self.coordinator.port)
 		for node in self.node_list:
 			send_message(f"set {s}", node.port)
-			#node.time = s
 			if(newProcess):
 				send_message("label", node.port)
-				#node.update_label()
 
 	def reload(self, filename):
 		file_content = open(filename, "r")
 		helper = {}
+
+		# Get the file contenct
 		for line in file_content:
 			helper[int(line.split(",")[0])] = [line.split(",")[1], line.split(",")[2].strip()]
+		
+		# Remove current nodes from the helper dictionary
 		for i in self.node_list:
-			print(i.id_)
 			if(int(i.id_ )in list(helper.keys())):
 				helper.pop(int(i.id_))
 
-		print(helper)
-
+		# Remove suspended nodes from the helper dictionary
 		for s in self.suspended_list:
-			if(s.id_ in list(helper.keys())):
+			if(int(s.id_) in list(helper.keys())):
 				helper.pop(int(s.id_))
+
+		if len(list(helper.keys()))==0:
+			print("No need to reload")
+			return
 
 		for h in helper:
 			label = helper[h][0]
 			time_l = helper[h][1]
 			node_label = label.split("_")[0]
 			# Create Node obj to store in the node_list
-			node_obj = Node(h, node_label+"_0", time_l[:-2], self.current_port)
-			create(node_obj.id_, node_obj.label, node_obj.time, node_obj.port)
-			reply = send_message("here?", node_obj.port)
-			if reply == "yes":
-				# self.node_list.append((node[0], node_label+"_0", node[2], self.current_port))
-				self.node_list.append(node_obj)
-				print(f"Node {node_obj.label} has been created on PORT {self.current_port}")
-			
+			self.handleCreation(h, label, time_l[:-2])
 			self.current_port += 1
 
 		self.coordinator = self.startElection(default = True)
@@ -231,9 +260,18 @@ if __name__ == '__main__':
 		clock = line_splitted[2].strip()
 		nodes.append((id_, label, clock))
 		
-	# Create the network
 	net = Network(nodes)
 	print("Network has been created")
+	print("""
+	Command List:
+	- list - Lists all the nodes
+	- clock - Lists all the clocks of nodes
+	- kill <process_id: int> - Kills the process with corresponding ID
+	- set <process-id:int> <time:str>- Updates the time of specified node
+	- freeze <process-id:int> - Freezes the specified process
+	- unfreeze <process-id:int> - Unfreezes the specified process
+	- reload <input-file:str> - Reloads the processes from the specified file 
+		""")
 	# Select coordinator
 	# get commands and process
 	t1 = threading.Thread(target=lambda: net.testOmega())
