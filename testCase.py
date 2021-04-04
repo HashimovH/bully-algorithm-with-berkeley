@@ -15,8 +15,10 @@ b = add_timuntes(time_, 1)
 
 print(b)
 
-time = "11:30"
+time = "97:69"
 hour,minute = [int(i) for i in time.split(":")]
 
 print(hour)
 print(minute)
+
+omega = datetime.time(hour, minute)

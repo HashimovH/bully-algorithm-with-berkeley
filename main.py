@@ -1,4 +1,5 @@
 import sys
+import os
 from random import randint
 from random import choice
 from create_process import create
@@ -103,13 +104,24 @@ class Network:
 			file = command.split(' ')[1]
 			self.reload(file)
 
+		elif command.startswith("set"):
+			try:
+				helper = command.split(" ")
+				node_ = helper[1]
+				newTime = helper[2].strip()[:-2]
+				self.setTime(int(node_), newTime)
+			except IndexError as error:
+				print("Not enough arguments, the use case is: set n hh:mm(am/pm)")
+
+
+
+
 		print(message)
 	#drift
 	def testOmega(self):
 		while True:
 			time.sleep(60)
 			send_message("update", self.coordinator.port)
-			self.coordinator.updateTime()
 			self.sync_clocks()
 
 
@@ -143,11 +155,14 @@ class Network:
 
 	def setTime(self, process_id, time):
 		for i in range(len(self.node_list)):
-			if(self.node_list[i].id_ == process_id):
-				self.node_list[i].updateTime(time)
-				if(self.node_list[i].is_coordinator):
+			if(int(self.node_list[i].id_) == int(process_id)):
+				if(send_message(f"set {time}", self.node_list[i].port) == "Wrong format"):
+					print("Input correct time format (hh:mm(am/pm)")
+					break
+				if(self.node_list[i] == self.coordinator):
 					self.sync_clocks(True)
 				#if the process was not the coordinator, sync must happen automatically
+				print(f"Set time for process {process_id}")
 				break
 
 
@@ -221,8 +236,12 @@ if __name__ == '__main__':
 	print("Network has been created")
 	# Select coordinator
 	# get commands and process
-	threading.Thread(target=lambda: net.testOmega()).start()
-	while True:
-		print('Enter your command: ', end='$ ')
-		cmd = input()
-		net.get_command(cmd)
+	t1 = threading.Thread(target=lambda: net.testOmega())
+	t1.start()
+	try:
+		while True:
+			print('Enter your command: ', end='$ ')
+			cmd = input()
+			net.get_command(cmd)
+	except:
+		os._exit(0)
