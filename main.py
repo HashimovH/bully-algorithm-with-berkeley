@@ -1,4 +1,5 @@
 import sys
+import os
 from random import randint
 from random import choice
 from create_process import create
@@ -135,8 +136,17 @@ class Network:
 				return
 			self.reload(file)
 
+		elif command.startswith("set"):
+			try:
+				helper = command.split(" ")
+				node_ = helper[1]
+				newTime = helper[2].strip()[:-2]
+				self.setTime(int(node_), newTime)
+			except IndexError as error:
+				print("Not enough arguments, the use case is: set n hh:mm(am/pm)")
+
 		elif command == 'exit':
-			sys.exit()
+			os._exit(0)
 
 		print(message)
 	#drift
@@ -144,7 +154,6 @@ class Network:
 		while True:
 			time.sleep(60)
 			send_message("update", self.coordinator.port)
-			self.coordinator.updateTime()
 			self.sync_clocks()
 
 
@@ -178,11 +187,14 @@ class Network:
 
 	def setTime(self, process_id, time):
 		for i in range(len(self.node_list)):
-			if(self.node_list[i].id_ == process_id):
-				self.node_list[i].setTime(time)
-				if(self.node_list[i].is_coordinator):
+			if(int(self.node_list[i].id_) == int(process_id)):
+				if(send_message(f"set {time}", self.node_list[i].port) == "Wrong format"):
+					print("Input correct time format (hh:mm(am/pm)")
+					break
+				if(self.node_list[i] == self.coordinator):
 					self.sync_clocks(True)
 				#if the process was not the coordinator, sync must happen automatically
+				print(f"Set time for process {process_id}")
 				break
 
 
@@ -250,20 +262,24 @@ if __name__ == '__main__':
 		
 	net = Network(nodes)
 	print("Network has been created")
-	threading.Thread(target=lambda: net.testOmega()).start()
-	
-
 	print("""
-Command List:
+	Command List:
 	- list - Lists all the nodes
 	- clock - Lists all the clocks of nodes
 	- kill <process_id: int> - Kills the process with corresponding ID
-	- set-time <process-id:int> <time:str>- Updates the time of specified node
+	- set <process-id:int> <time:str>- Updates the time of specified node
 	- freeze <process-id:int> - Freezes the specified process
 	- unfreeze <process-id:int> - Unfreezes the specified process
 	- reload <input-file:str> - Reloads the processes from the specified file 
 		""")
-	while True:
-		print('Enter your command: ', end='$ ')
-		cmd = input()
-		net.get_command(cmd)
+	# Select coordinator
+	# get commands and process
+	t1 = threading.Thread(target=lambda: net.testOmega())
+	t1.start()
+	try:
+		while True:
+			print('Enter your command: ', end='$ ')
+			cmd = input()
+			net.get_command(cmd)
+	except:
+		os._exit(0)

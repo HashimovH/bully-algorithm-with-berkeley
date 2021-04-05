@@ -103,10 +103,13 @@ class Node:
 		elif message == "list":
 			return self.identify()
 		elif message.startswith("set"):
-			listTime = [int(i) for i in message.split(" ")[1].split(":")]
-			newTime = datetime.time(listTime[0], listTime[1])
-			self.setTime(newTime)
-			return ""
+			try:
+				listTime = [int(i) for i in message.split(" ")[1].split(":")]
+				newTime = datetime.time(listTime[0], listTime[1])
+				self.setTime(newTime)
+				return ""
+			except ValueError:
+				return "Wrong format"
 		elif message == "time":
 			return self.time.strftime("%H:%M")
 		elif message == "label":
