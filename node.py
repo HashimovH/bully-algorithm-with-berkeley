@@ -32,9 +32,10 @@ class Node:
         self.is_coordinator = False
 
     def update_label(self):
-        self.K += 1
-        head, _ = self.label.split("_")
-        self.label = head + "_" + str(self.K)
+        if not self.suspended:
+            self.K += 1
+            head, _ = self.label.split("_")
+            self.label = head + "_" + str(self.K)
 
     def resetTime(self):
         self.time = self.default_time
