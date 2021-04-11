@@ -50,7 +50,7 @@ class Network:
 	#and we have to see when we should run the thread
 	def prioritize(self, node):
 		head = send_message("id", node.port)
-		t = threading.Timer(10, CS, args = (head, node,))
+		t = threading.Timer(30, CS, args = (head, node,))
 		#if nothing is in the queue, put it at the start and run, simple
 		if(len(self.queue_list) == 0):
 			#don't like this either
