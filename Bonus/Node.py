@@ -3,9 +3,12 @@ import argparse
 
 class Node:
 	HOST = '127.0.0.1'
-	holding = False
-	wanted = False
-	doNotWant = True
+	#is using CS
+	HOLD = False
+	#wants to use it, but has to wait
+	want = False
+	#doesn't care
+	DNW = True
 
 	def __init__(self, timeStamp, port):
 		self.timeStamp = timeStamp
@@ -23,52 +26,68 @@ class Node:
 		return int(self.timeStamp) < int(other.timeStamp)
 
 	def __str__(self):
-		return f"P:{self.timeStamp}"
+		if(self.HOLD):
+			return f"P:{self.timeStamp} (Holding)"
+		elif(self.want):
+			return f"P:{self.timeStamp} (Wanting)"
+		elif(self.DNW):
+			return f"P:{self.timeStamp} (Do Not Want)"
 
 	def __hash__(self):
 		return hash(self.timeStamp)
 
 	def putWanting(self):
-		self.wanted = True
-		self.wanted = False
-		self.doNotWant = False
+		self.HOLD = False
+		self.want = True
+		self.DNW = False
 
 	def holding(self):
-		self.holding = True
-		self.wanted = False
-		self.doNotWant = False
+		self.HOLD = True
+		self.want = False
+		self.DNW = False
 
 	def doNotWant(self):
-		self.doNotWant = True
-		self.holding = False
-		self.wanted = False
+		self.DNW = True
+		self.HOLD = False
+		self.want = False
+
+	def showHolding(self):
+		if(self.HOLD):
+			return "Yes"
+		else:
+			return "No"
 
 	def processMessages(self, message):
 		if message == "kill":
 			exit()
 			return ""
-		elif message.startswith("acceess"):
+		elif message.startswith("access"):
 			helper = message.split(" ")
 			other_stamp = helper[1]
-			if(self.wanted):
-				if(other_stamp < self.timeStamp):
+			if(self.want):
+				if(int(other_stamp) < int(self.timeStamp)):
 					return "OK"
 				else:
 					return ""
-			elif(self.doNotWant):
+			elif(self.DNW):
 				return "OK"
-			elif(self.holding):
+			elif(self.HOLD):
 				return ""
 		elif message == "id":
 			return self.timeStamp
 		elif message == "work":
 			self.holding()
+			return ""
 		elif message == "done":
 			self.doNotWant()
+			return ""
 		elif message == "wanted":
-			self.wanted()
+			self.putWanting()
+			return ""
 		elif message == "list":
 			return self.__str__()
+		elif message == "show":
+			return self.showHolding()
 	def join(self):
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _socket:
 			_socket.bind((Node.HOST, self.port))
@@ -78,7 +97,6 @@ class Node:
 				con, _ = _socket.accept()
 				with con:
 					message = con.recv(2048).decode('utf-8').rstrip('\n')
-
 					if message == 'bye':
 						print(f'Node {self.timeStamp}: I am going out..')
 						break
@@ -90,12 +108,12 @@ class Node:
 if __name__ == '__main__':
 	print("Node file is running")
 	parser = argparse.ArgumentParser(description="Create a new node")
-	parser.add_argument('--id', type=int, help='Id of the node')
+	# parser.add_argument('--id', type=int, help='Id of the node')
 	parser.add_argument('--port', type=int, help='Port of the node')
 	parser.add_argument('--time', type=str, help='The time on port')
-	parser.add_argument('--label', type=str, help='The label of the port')
+	# parser.add_argument('--label', type=str, help='The label of the port')
 	args = parser.parse_args()
-	node = Node(args.id, args.label, args.time, args.port)
+	node = Node(args.time, args.port)
 	node.join()
 
 	

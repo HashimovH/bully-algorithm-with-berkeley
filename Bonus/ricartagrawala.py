@@ -41,6 +41,7 @@ class Network:
 	def __init__(self, nodes):
 		for node in nodes:
 			process = Node(node[1], self.current_port)
+			create(process.timeStamp, process.port)
 			self.current_port += 1
 			self.node_list.append(process)
 	
@@ -49,20 +50,30 @@ class Network:
 	#create a thread for 10 seconds (should be 30, but testing)
 	#and we have to see when we should run the thread
 	def prioritize(self, node):
+		if(node in self.queue_list):
+			print("Process already in que/holding")
+			return
 		head = send_message("id", node.port)
 		t = threading.Timer(10, CS, args = (head, node,))
+		#t.join()
 		#if nothing is in the queue, put it at the start and run, simple
 		if(len(self.queue_list) == 0):
 			#don't like this either
 			self.queue_list.append(node)
 			self.threadToNode[node] = t
 			self.running = True
+			send_message("work", node.port)
 			t.start()
+		elif(len(self.queue_list) == 1):
+			self.queue_list.append(node)
+			self.threadToNode[node] = t
+			send_message("wanted", node.port)
 		else:
 			#by default, it goes to the end of the lists
 			id_ = len(self.queue_list) - 1
-			for node_ in self.node_list:
-				response = send_message("access", node_.port)
+			for node_ in self.queue_list[1:]:
+				msg = "access " + head
+				response = send_message(msg, node_.port)
 				#empty response means that it is using CS or timeStamp is lower, meaning higher priority
 				if(response == ""):
 					continue
@@ -71,11 +82,12 @@ class Network:
 					#track the best position for our node
 					id_ = min(id_, self.queue_list.index(node_))
 			#add it in the queue
-			self.queue_list.insert(id_)
+			self.queue_list.insert(id_, node)
 			#mark the thread
 			self.threadToNode[node] = t
 			#send the message that it is wanted
 			send_message("wanted", node.port)
+
 	#this is a constant function that runs ALWAYS, so be careful
 	def cycle(self):
 		#to make sure the thread always runs
@@ -83,20 +95,24 @@ class Network:
 			#to make sure this part only runs when there is something in the queue
 			while(self.running):
 				#test
-				print("got here")
 				#if only one element in the queue, that means it's the last one
 				# and we can stop this inner while cycle and reset the lists
-				if(len(self.queue_list) == 1):
-					self.running = False
-					self.queue_list = []
-					self.threadToNode = {}
 				#check to see if the first process in the queue list is running
 				#if it is not, time to pop it and run the second one
-				elif(self.threadToNode[self.queue_list[0]].is_alive() == False):
-					toRemove = queue_list.pop(0)
-					self.threadToNode.pop(toRemove)
-					self.threadToNode[self.queue_list[0]].start()
-					send_message("work", self.queue_list[0].port)
+				if(send_message("show", self.queue_list[0].port) == "No"):
+					if(len(self.queue_list) == 1):
+						print("Clearing queue")
+						self.running = False
+						self.queue_list = []
+						self.threadToNode = {}
+					else:
+						print("Starting next thread")
+						toRemove = self.queue_list.pop(0)
+						self.threadToNode.pop(toRemove)
+						self.threadToNode[self.queue_list[0]].start()
+						send_message("work", self.queue_list[0].port)
+
+
 			
 
 
@@ -107,15 +123,14 @@ class Network:
 		if command.strip() == ('list'):
 			# Let's check our each node to know it is there or not
 			for node in self.node_list:
-				#message += send_message("list", node.port) + '\n'
-				print(node)
+				message += send_message("list", node.port) + '\n'
+				#print(node)
 		elif command == 'exit':
 			os._exit(0)
 		elif command.startswith("access"):
 			head = command.split(" ")[1]
 			for node in self.node_list:
 				if(node.timeStamp == head):
-					send_message("work", node.port)
 					self.prioritize(node)
 
 		print(message)
