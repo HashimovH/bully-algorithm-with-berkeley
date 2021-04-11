@@ -55,7 +55,7 @@ class Network:
 			return
 		head = send_message("id", node.port)
 		t = threading.Timer(10, CS, args = (head, node,))
-		#t.join()
+
 		#if nothing is in the queue, put it at the start and run, simple
 		if(len(self.queue_list) == 0):
 			#don't like this either
